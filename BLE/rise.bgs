@@ -141,13 +141,13 @@ event hardware_soft_timer(handle)
 		stand_time = stand_time + 1
 	end if
 	
-	if stand_time > 5 then 
+	if stand_time > 300 then 
 		sitting_time = 0
 		stand_time = 0
 		call hardware_spi_transfer(0,14,"YOU CAN SIT :)")
 	end if 
 	
-	if sitting_time > 10 then
+	if sitting_time > 1800 then
 		call hardware_spi_transfer(0,14,"STAND UP      ")
 		call attributes_write(c_gpio_status, 0, 1, 1)
 	end if
