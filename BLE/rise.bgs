@@ -36,6 +36,20 @@ event system_boot(major, minor, patch, build, ll_version, protocol_version, hw)
 	# Update display
 	call hardware_spi_transfer(0,12,"Disconnected")
 	
+	#set the display to command mode
+	call hardware_io_port_write(1,$7,$1)
+	call hardware_io_port_config_direction(1,$7)
+	
+	# Change display data address
+	call hardware_spi_transfer(0,1,"\xc0")
+	
+	#set the display to data mode
+	call hardware_io_port_write(1,$7,$3)
+	
+	# Update display
+	call hardware_spi_transfer(0,14,"YOU CAN SIT :)")
+	
+	
     #Enable IO interrupts from PORT 0 PINs P0_0 on rising edge
     call hardware_io_port_config_irq(0,$1,0)
 	
