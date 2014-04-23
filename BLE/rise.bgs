@@ -1,0 +1,144 @@
+dim connected       # BLE connection status
+dim sitting_time 	# Store the sitting time
+dim stand_time		# Store the stand time
+
+dim read_res
+dim read_port
+dim read_data
+
+
+#Boot event listener
+event system_boot(major, minor, patch, build, ll_version, protocol_version, hw)
+	# initialize connection status as DISCONNECTED
+    connected = 0
+	
+	# initialize time counters to 0
+	sitting_time = 0
+	stand_time = 0
+	
+	# set advertisement interval to 200-300ms, and use all advertisement channels
+    # (note min/max parameters are in units of 625 uSec)
+    call gap_set_adv_parameters(320, 480, 7)
+
+    # put module into discoverable/connectable mode
+    call gap_set_mode(gap_general_discoverable, gap_undirected_connectable)
+	
+	#set the display to command mode
+	call hardware_io_port_write(1,$7,$1)
+	call hardware_io_port_config_direction(1,$7)
+	
+	#initialize the display
+	call hardware_spi_transfer(0,11,"\x30\x30\x30\x39\x14\x56\x6d\x70\x0c\x06\x01")
+	
+	#set the display to data mode
+	call hardware_io_port_write(1,$7,$3)
+	
+	# Update display
+	#call hardware_spi_transfer(0,12,"Buttons demo")
+	
+	# Update display
+	call hardware_spi_transfer(0,12,"Disconnected")
+	
+    #Enable IO interrupts from PORT 0 PINs P0_0 on rising edge
+    call hardware_io_port_config_irq(0,$1,0)
+	
+	#start timer that generates an event every 1s
+	call hardware_set_soft_timer(32768, 1, 0)
+end
+
+event connection_status(connection, flags, address, address_type, conn_interval, timeout, latency, bonding)
+    # check for "new connection established" event
+    if (flags & $05) = $05 then
+        # set connection status to CONNECTED
+        connected = 1
+
+        # DEVKIT UART OUTPUT: connected
+		#set the display to command mode
+		call hardware_io_port_write(1,$7,$1)
+		call hardware_io_port_config_direction(1,$7)
+	
+		# Change display data address
+		call hardware_spi_transfer(0,1,"\x80")
+	
+		#set the display to data mode
+		call hardware_io_port_write(1,$7,$3)
+	
+		call hardware_spi_transfer(0,12,"Connected   ")
+        #call system_endpoint_tx(system_endpoint_uart1, 11, "CONNECTED\r\n")
+		
+	
+    end if
+    
+    # check for "encrypted" status (e.g. connected + bonded, not used by this IRQ demo)
+    #if (flags & $02) = $02 then
+        # DEVKIT UART OUTPUT: connected
+    #    call system_endpoint_tx(system_endpoint_uart1, 11, "ENCRYPTED\r\n")
+    #end if
+end
+
+event connection_disconnected(handle, result)
+    # set connection status to DISCONNECTED
+    connected = 0
+    
+    # DEVKIT UART OUTPUT: disconnected
+    #call system_endpoint_tx(system_endpoint_uart1, 14, "DISCONNECTED\r\n")
+	
+		#set the display to command mode
+	call hardware_io_port_write(1,$7,$1)
+	call hardware_io_port_config_direction(1,$7)
+	
+	# Change display data address
+	call hardware_spi_transfer(0,1,"\x80")
+	
+	#set the display to data mode
+	call hardware_io_port_write(1,$7,$3)
+	
+	call hardware_spi_transfer(0,12,"Disconnected")
+	
+	
+    # set advertisement interval back to 200-300ms, use all advertisement channels
+    # (note min/max parameters are in units of 625 uSec)
+    call gap_set_adv_parameters(320, 480, 7)
+
+    # put module back into discoverable/connectable mode
+    # (also resumes advertising based on parameters)
+    call gap_set_mode(gap_general_discoverable, gap_undirected_connectable)
+end
+
+
+
+
+#Timer event listener
+event hardware_soft_timer(handle)
+	
+	#set the display to command mode
+	call hardware_io_port_write(1,$7,$1)
+	call hardware_io_port_config_direction(1,$7)
+	
+	# Change display data address
+	call hardware_spi_transfer(0,1,"\xc0")
+	
+	#set the display to data mode
+	call hardware_io_port_write(1,$7,$3)
+	
+	call hardware_io_port_read(0, 1)(read_res, read_port, read_data)
+	
+	if (read_data & 1) > 0 then
+		sitting_time = sitting_time + 1
+		stand_time = 0
+	else
+		stand_time = stand_time + 1
+	end if
+	
+	if stand_time > 5 then 
+		sitting_time = 0
+		stand_time = 0
+		call hardware_spi_transfer(0,14,"YOU CAN SIT :)")
+	end if 
+	
+	if sitting_time > 10 then
+		call hardware_spi_transfer(0,14,"STAND UP      ")
+		call attributes_write(c_gpio_status, 0, 1, 1)
+	end if
+end
+
