@@ -34,9 +34,6 @@ event system_boot(major, minor, patch, build, ll_version, protocol_version, hw)
 	call hardware_io_port_write(1,$7,$3)
 	
 	# Update display
-	#call hardware_spi_transfer(0,12,"Buttons demo")
-	
-	# Update display
 	call hardware_spi_transfer(0,12,"Disconnected")
 	
     #Enable IO interrupts from PORT 0 PINs P0_0 on rising edge
